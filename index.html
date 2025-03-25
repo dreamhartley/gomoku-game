@@ -69,6 +69,10 @@
             top: 0;
         }
 
+        .cell:focus {
+            outline: none;
+        }
+
         .piece {
             position: absolute;
             width: 26px;
@@ -203,6 +207,11 @@
             .status-container {
                 height: 26px;
             }
+        }
+
+        /* 触摸反馈 */
+        .cell:active {
+            background-color: rgba(0, 0, 0, 0.1);
         }
 
         /* 新增思考指示器样式 */
