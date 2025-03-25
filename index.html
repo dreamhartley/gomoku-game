@@ -313,6 +313,7 @@
                 <option value="easy">简单</option>
                 <option value="medium" selected>普通</option>
                 <option value="hard">困难</option>
+                <option value="insane">疯狂</option>
             </select>
         </div>
     </div>
@@ -534,8 +535,24 @@
                     // 显示思考指示器
                     thinkingIndicator.style.display = 'inline-block';
 
-                    // 随机延迟500-1500毫秒(0.5-1.5秒)
-                    const delay = 500 + Math.random() * 1000;
+                    // 根据难度设置延迟时间(优化后的时间范围)
+                    let delay;
+                    switch(difficulty) {
+                        case 'easy':
+                            delay = 200 + Math.random() * 600; // 0.2-0.8秒
+                            break;
+                        case 'medium':
+                            delay = 400 + Math.random() * 800; // 0.4-1.2秒
+                            break;
+                        case 'hard':
+                            delay = 800 + Math.random() * 1000; // 0.8-1.8秒
+                            break;
+                        case 'insane':
+                            delay = 800 + Math.random() * 700; // 0.8-1.5秒
+                            break;
+                        default:
+                            delay = 400 + Math.random() * 800;
+                    }
 
                     setTimeout(() => {
                         const [aiRow, aiCol] = findBestMove();
@@ -631,32 +648,192 @@
                         return findIntermediateMove();
                     case 'hard':
                         return findAdvancedMove();
+                    case 'insane':
+                        return findInsaneMove();
                     default:
                         return findIntermediateMove();
                 }
             }
 
-            // 简单难度 - 随机走棋
-            function findRandomMove() {
-                // 首先检查是否有立即获胜或阻止对手获胜的位置
+            // 疯狂难度 - 优化后的AI算法
+            function findInsaneMove() {
+                // 检查是否有立即获胜或需要阻止的走法
                 const immediateMove = checkImmediateWinOrBlock();
                 if (immediateMove) return immediateMove;
 
-                // 否则随机选择一个空位置
-                const emptyCells = [];
+                let bestScore = -Infinity;
+                let bestMove = [7, 7]; // 默认中心位置
+                const candidates = getSmartCandidateMoves();
+                
+                // 使用迭代加深搜索和α-β剪枝
+                const startTime = Date.now();
+                const timeLimit = 2000; // 2秒超时(优化为2秒)
+                let depth = 2; // 初始深度
+                let finalBestMove = bestMove;
+                
+                // 迭代加深搜索
+                while (Date.now() - startTime < timeLimit * 0.8 && depth <= 6) { // 增加最大深度到6
+                    let currentBestScore = -Infinity;
+                    let currentBestMove = bestMove;
+                    let alpha = -Infinity;
+                    let beta = Infinity;
+                    
+                    for (const [row, col] of candidates) {
+                        if (Date.now() - startTime > timeLimit) break;
+
+                        board[row][col] = WHITE;
+                        const score = minimax(depth - 1, alpha, beta, false, startTime, timeLimit);
+                        board[row][col] = EMPTY;
+
+                        if (score > currentBestScore) {
+                            currentBestScore = score;
+                            currentBestMove = [row, col];
+                            alpha = Math.max(alpha, score);
+                        }
+
+                        if (beta <= alpha) break; // α-β剪枝
+                    }
+                    
+                    if (currentBestScore > bestScore) {
+                        bestScore = currentBestScore;
+                        finalBestMove = currentBestMove;
+                    }
+                    depth++;
+                }
+
+                return finalBestMove;
+            }
+
+            // 更智能的候选位置生成
+            function getSmartCandidateMoves() {
+                const candidates = new Set();
+                const center = (BOARD_SIZE - 1) / 2;
+                
+                // 1. 优先考虑已有棋子周围的位置
+                for (let row = 0; row < BOARD_SIZE; row++) {
+                    for (let col = 0; col < BOARD_SIZE; col++) {
+                        if (board[row][col] !== EMPTY) {
+                            // 动态调整搜索范围 - 根据棋盘上棋子数量
+                            const range = board.flat().filter(c => c !== EMPTY).length < 10 ? 4 : 3;
+                            
+                            // 周围范围内的空位
+                            for (let r = Math.max(0, row - range); r <= Math.min(BOARD_SIZE - 1, row + range); r++) {
+                                for (let c = Math.max(0, col - range); c <= Math.min(BOARD_SIZE - 1, col + range); c++) {
+                                    if (board[r][c] === EMPTY) {
+                                        candidates.add(`${r},${c}`);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 2. 如果没有棋子，返回中心点
+                if (candidates.size === 0) return [[center, center]];
+                
+                // 3. 按评分排序候选位置
+                const sortedCandidates = Array.from(candidates).map(pos => {
+                    const [r, c] = pos.split(',').map(Number);
+                    // 优化评分计算: 增加中心位置权重和已有棋型评估
+                    const centerWeight = 1 - (Math.abs(r - center) + Math.abs(c - center)) / (2 * center);
+                    const attackScore = evaluatePosition(r, c, WHITE);
+                    const defendScore = evaluatePosition(r, c, BLACK) * 0.9; // 稍微降低防守权重
+                    
+                    return { 
+                        pos: [r, c], 
+                        score: attackScore + defendScore + centerWeight * 50 
+                    };
+                }).sort((a, b) => b.score - a.score);
+                
+                // 返回前15个最佳候选位置(减少数量提高效率)
+                return sortedCandidates.slice(0, 15).map(item => item.pos);
+            }
+
+            // 优化后的Minimax算法
+            function minimax(depth, alpha, beta, isMaximizing, startTime, timeLimit) {
+                // 检查游戏结束或达到最大深度或超时
+                if (depth === 0 || gameOver || (startTime && Date.now() - startTime > timeLimit)) {
+                    return evaluateBoard();
+                }
+
+                const candidates = getCandidateMoves();
+
+                if (isMaximizing) {
+                    let maxEval = -Infinity;
+                    for (const [row, col] of candidates) {
+                        board[row][col] = WHITE;
+                        const eval = minimax(depth - 1, alpha, beta, false, startTime, timeLimit);
+                        board[row][col] = EMPTY;
+                        maxEval = Math.max(maxEval, eval);
+                        alpha = Math.max(alpha, eval);
+                        if (beta <= alpha) break;
+                    }
+                    return maxEval;
+                } else {
+                    let minEval = Infinity;
+                    for (const [row, col] of candidates) {
+                        board[row][col] = BLACK;
+                        const eval = minimax(depth - 1, alpha, beta, true, startTime, timeLimit);
+                        board[row][col] = EMPTY;
+                        minEval = Math.min(minEval, eval);
+                        beta = Math.min(beta, eval);
+                        if (beta <= alpha) break;
+                    }
+                    return minEval;
+                }
+            }
+
+            // 简单难度 - 增强版随机走棋
+            function findRandomMove() {
+                // 检查立即获胜或阻挡
+                const immediateMove = checkImmediateWinOrBlock();
+                if (immediateMove) return immediateMove;
+
+                // 基础评分系统
+                const scoredMoves = [];
+                let maxScore = 0;
+
+                // 遍历所有空位
                 for (let row = 0; row < BOARD_SIZE; row++) {
                     for (let col = 0; col < BOARD_SIZE; col++) {
                         if (board[row][col] === EMPTY) {
-                            emptyCells.push([row, col]);
+                            let score = 0;
+                            
+                            // 1. 中心区域权重
+                            const centerDist = Math.abs(row - 7) + Math.abs(col - 7);
+                            score += (14 - centerDist) * 3;
+                            
+                            // 2. 邻近已有棋子加分
+                            for (let r = Math.max(0, row-1); r <= Math.min(14, row+1); r++) {
+                                for (let c = Math.max(0, col-1); c <= Math.min(14, col+1); c++) {
+                                    if (board[r][c] !== EMPTY) {
+                                        score += (board[r][c] === WHITE) ? 5 : 8; // 更注重防守
+                                    }
+                                }
+                            }
+                            
+                            // 3. 基础棋型识别
+                            const defendScore = evaluatePosition(row, col, BLACK) * 0.6;
+                            const attackScore = evaluatePosition(row, col, WHITE) * 0.4;
+                            score += defendScore + attackScore;
+
+                            // 记录得分和位置
+                            scoredMoves.push({pos: [row, col], score: score});
+                            maxScore = Math.max(maxScore, score);
                         }
                     }
                 }
 
-                if (emptyCells.length > 0) {
-                    return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                // 从高分位置中随机选择
+                const candidateMoves = scoredMoves.filter(m => m.score >= maxScore * 0.7);
+                if (candidateMoves.length > 0) {
+                    return candidateMoves[Math.floor(Math.random() * candidateMoves.length)].pos;
                 }
 
-                return [7, 7]; // 默认中心位置
+                // 保底随机选择
+                return scoredMoves.length > 0 
+                    ? scoredMoves[Math.floor(Math.random() * scoredMoves.length)].pos
+                    : [7, 7];
             }
 
             // 中等难度 - 使用评分系统
@@ -728,35 +905,38 @@
                 return bestMove;
             }
 
-            // 获取候选位置（优化性能）
+            // 保留原getCandidateMoves函数供其他难度使用
             function getCandidateMoves() {
                 const candidates = [];
                 const range = 2; // 只考虑已有棋子周围2格范围内的位置
+                const occupiedCells = [];
 
+                // 首先收集所有已有棋子的位置
                 for (let row = 0; row < BOARD_SIZE; row++) {
                     for (let col = 0; col < BOARD_SIZE; col++) {
-                        if (board[row][col] === EMPTY) {
-                            // 检查周围是否有棋子
-                            let hasNeighbor = false;
+                        if (board[row][col] !== EMPTY) {
+                            occupiedCells.push([row, col]);
+                        }
+                    }
+                }
 
-                            for (let r = Math.max(0, row - range); r <= Math.min(BOARD_SIZE - 1, row + range); r++) {
-                                for (let c = Math.max(0, col - range); c <= Math.min(BOARD_SIZE - 1, col + range); c++) {
-                                    if (board[r][c] !== EMPTY) {
-                                        hasNeighbor = true;
-                                        break;
-                                    }
-                                }
-                                if (hasNeighbor) break;
-                            }
+                // 如果没有棋子，返回中心点
+                if (occupiedCells.length === 0) return [[7, 7]];
 
-                            if (hasNeighbor || (row === 7 && col === 7)) {
-                                candidates.push([row, col]);
+                // 遍历所有已有棋子周围的空位
+                const visited = new Set();
+                for (const [row, col] of occupiedCells) {
+                    for (let r = Math.max(0, row - range); r <= Math.min(BOARD_SIZE - 1, row + range); r++) {
+                        for (let c = Math.max(0, col - range); c <= Math.min(BOARD_SIZE - 1, col + range); c++) {
+                            if (board[r][c] === EMPTY && !visited.has(`${r},${c}`)) {
+                                candidates.push([r, c]);
+                                visited.add(`${r},${c}`);
                             }
                         }
                     }
                 }
 
-                // 如果没有候选位置（游戏刚开始），返回中心点
+                // 如果没有候选位置（理论上不会发生），返回中心点
                 return candidates.length > 0 ? candidates : [[7, 7]];
             }
 
@@ -826,7 +1006,7 @@
                     const patterns = [
                         { regex: /11111/, score: SCORES.FIVE }, // 五连
                         { regex: /011110/, score: SCORES.FOUR }, // 活四
-                        { regex: /011112|211110|10111|11011|11101/, score: SCORES.BLOCKED_FOUR }, // 冲四
+                        { regex: /011112|211110|10111|11011|11101|011011/, score: SCORES.BLOCKED_FOUR }, // 冲四
                         { regex: /01110/, score: SCORES.THREE }, // 活三
                         { regex: /001112|211100|010110|011010|10011|11001|10101/, score: SCORES.BLOCKED_THREE }, // 眠三
                         { regex: /00110|01100|01010/, score: SCORES.TWO }, // 活二
@@ -886,7 +1066,23 @@
 
                     // 显示思考指示器
                     thinkingIndicator.style.display = 'inline-block';
-                    const delay = 500 + Math.random() * 1000;
+                    let delay;
+                    switch(difficulty) {
+                        case 'easy':
+                            delay = 200 + Math.random() * 600; // 0.2-0.8秒
+                            break;
+                        case 'medium':
+                            delay = 400 + Math.random() * 800; // 0.4-1.2秒
+                            break;
+                        case 'hard':
+                            delay = 800 + Math.random() * 1000; // 0.8-1.8秒
+                            break;
+                        case 'insane':
+                            delay = 800 + Math.random() * 700; // 0.8-1.5秒
+                            break;
+                        default:
+                            delay = 400 + Math.random() * 800;
+                    }
 
                     setTimeout(() => {
                         const [aiRow, aiCol] = findBestMove();
