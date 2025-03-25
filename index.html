@@ -78,7 +78,6 @@
             top: 2px;
             left: 2px;
             z-index: 2;
-            /* 修改：增加z-index让棋子在星位上方 */
         }
 
         .black {
@@ -116,7 +115,6 @@
             background-color: #A0522D;
         }
 
-        /* 修改后的部分 */
         .status-container {
             margin-top: 15px;
             text-align: center;
@@ -124,7 +122,6 @@
             justify-content: center;
             align-items: center;
             height: 30px;
-            /* 固定高度确保思考指示器不会影响布局 */
         }
 
         .status {
@@ -146,7 +143,6 @@
             background-color: #000;
             border-radius: 50%;
             z-index: 1;
-            /* 修改：降低z-index让棋子可以覆盖星位 */
             pointer-events: none;
         }
 
@@ -197,7 +193,6 @@
                 min-width: 120px;
             }
 
-            /* 修改后的部分 */
             .status {
                 font-size: 16px;
             }
@@ -207,12 +202,11 @@
             }
         }
 
-        /* 修改：禁用单元格点击时的半透明黑色框 */
         .cell:active {
             background-color: transparent;
         }
 
-        /* 新增思考指示器样式 */
+        /* 思考指示器样式 */
         .thinking-dot {
             display: inline-block;
             width: 8px;
@@ -267,19 +261,14 @@
         /* 新增: 背景音乐容器样式 */
         .bgm-container {
             position: fixed;
-            /* 使用固定定位 */
             bottom: 20px;
-            /* 距离底部20px */
             left: 20px;
-            /* 距离左侧20px */
             z-index: 100;
-            /* 确保在其他元素之上 */
         }
 
         /* 背景音乐按钮样式 */
         .bgm-button {
             background-color: rgba(139, 69, 19, 0.7);
-            /* 半透明风格 */
             transition: background-color 0.3s;
             padding: 8px 15px;
             background-color: #8B4513;
@@ -296,7 +285,6 @@
 
         .bgm-button.off {
             background-color: rgba(139, 69, 19, 0.4);
-            /* 关闭状态更加透明 */
             color: rgba(255, 255, 255, 0.7);
         }
     </style>
@@ -325,7 +313,7 @@
             </select>
         </div>
     </div>
-    <!-- 背景音乐控制按钮 (位于左下角) -->
+    <!-- 背景音乐控制按钮 -->
     <div class="bgm-container">
         <button id="bgm-toggle" class="bgm-button">背景音乐: 开启</button>
     </div>
