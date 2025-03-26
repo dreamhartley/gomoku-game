@@ -557,6 +557,7 @@
                     gameOver = true;
                     const winner = currentPlayer === BLACK ? '黑方' : '白方';
                     statusElement.textContent = `${winner}获胜!`;
+                    updateUndoButtonState(true); // 游戏结束，禁用悔棋
                     return;
                 }
 
@@ -616,6 +617,7 @@
                             if (checkWin(aiRow, aiCol, WHITE)) {
                                 gameOver = true;
                                 statusElement.textContent = 'AI(白方)获胜!';
+                                updateUndoButtonState(true); // 游戏结束，禁用悔棋
 
                                 // 移除 AI 回合标志
                                 isAITurn = false;
@@ -2288,6 +2290,7 @@
                             if (checkWin(aiRow, aiCol, WHITE)) {
                                 gameOver = true;
                                 statusElement.textContent = 'AI(白方)获胜!';
+                                updateUndoButtonState(true); // 游戏结束，禁用悔棋
 
                                 // 移除AI回合标志
                                 isAITurn = false;
