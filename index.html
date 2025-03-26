@@ -548,7 +548,7 @@
                             delay = 800 + Math.random() * 1000; // 0.8-1.8秒
                             break;
                         case 'insane':
-                            delay = 800 + Math.random() * 700; // 0.8-1.5秒
+                            delay = 300 + Math.random() * 500; // 0.3-0.8秒，降低随机延迟
                             break;
                         default:
                             delay = 400 + Math.random() * 800;
@@ -667,7 +667,7 @@
                 
                 // 使用迭代加深搜索和α-β剪枝
                 const startTime = Date.now();
-                const timeLimit = 2000; // 2秒超时(优化为2秒)
+                const timeLimit = 3000; // 增加到3秒超时，提升搜索深度
                 let depth = 2; // 初始深度
                 let finalBestMove = bestMove;
                 
@@ -737,7 +737,7 @@
                     // 优化评分计算: 增加中心位置权重和已有棋型评估
                     const centerWeight = 1 - (Math.abs(r - center) + Math.abs(c - center)) / (2 * center);
                     const attackScore = evaluatePosition(r, c, WHITE);
-                    const defendScore = evaluatePosition(r, c, BLACK) * 0.9; // 稍微降低防守权重
+                    const defendScore = evaluatePosition(r, c, BLACK) * 1.2; // 增加防守权重，更重视封堵玩家
                     
                     return { 
                         pos: [r, c], 
@@ -745,8 +745,8 @@
                     };
                 }).sort((a, b) => b.score - a.score);
                 
-                // 返回前15个最佳候选位置(减少数量提高效率)
-                return sortedCandidates.slice(0, 15).map(item => item.pos);
+                // 返回前20个最佳候选位置(增加数量提高AI能考虑到的防守点)
+                return sortedCandidates.slice(0, 20).map(item => item.pos);
             }
 
             // 优化后的Minimax算法
@@ -1035,7 +1035,7 @@
                         if (board[row][col] === WHITE) {
                             score += evaluatePosition(row, col, WHITE);
                         } else if (board[row][col] === BLACK) {
-                            score -= evaluatePosition(row, col, BLACK) * 1.2; // 给对手更高的防守权重
+                            score -= evaluatePosition(row, col, BLACK) * 1.5; // 进一步提高防守权重，更注重阻止玩家形成威胁
                         }
                     }
                 }
@@ -1078,7 +1078,7 @@
                             delay = 800 + Math.random() * 1000; // 0.8-1.8秒
                             break;
                         case 'insane':
-                            delay = 800 + Math.random() * 700; // 0.8-1.5秒
+                            delay = 300 + Math.random() * 500; // 0.3-0.8秒，降低随机延迟
                             break;
                         default:
                             delay = 400 + Math.random() * 800;
