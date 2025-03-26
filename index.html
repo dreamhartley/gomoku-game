@@ -1170,8 +1170,8 @@
                             };
                         }).sort((a, b) => b.score - a.score);
                         
-                        // 返回前20个最佳候选位置(增加数量提高AI能考虑到的防守点)
-                        return sortedCandidates.slice(0, 20).map(item => item.pos);
+                        // 返回前30个最佳候选位置(增加数量提高AI能考虑到的防守点)
+                        return sortedCandidates.slice(0, 30).map(item => item.pos);
                     }
 
                     function checkImmediateWinOrBlock(board) {
@@ -1341,21 +1341,23 @@
                                     playerMaxThreat = Math.max(playerMaxThreat, pieceScore);
                                     
                                     // 使用动态权重，对危险棋型增加更高防守权重
-                                    let defensiveFactor = 1.5; // 基础防守权重
+                                    let defensiveFactor = 2.0; // 提高基础防守权重
                                     
                                     // 根据威胁级别调整防守权重
-                                    if (pieceScore >= SCORES.OPEN_THREE) defensiveFactor = 2.0;
-                                    if (pieceScore >= SCORES.OPEN_FOUR || pieceScore >= SCORES.DOUBLE_THREE) defensiveFactor = 2.5; 
-                                    if (pieceScore >= SCORES.FOUR_THREE) defensiveFactor = 3.0;
+                                    if (pieceScore >= SCORES.OPEN_THREE) defensiveFactor = 2.8;
+                                    if (pieceScore >= SCORES.BLOCKED_FOUR) defensiveFactor = 3.2;
+                                    if (pieceScore >= SCORES.OPEN_FOUR || pieceScore >= SCORES.DOUBLE_THREE) defensiveFactor = 3.8; 
+                                    if (pieceScore >= SCORES.FOUR_THREE) defensiveFactor = 4.5;
                                     
                                     score -= pieceScore * defensiveFactor;
                                 }
                             }
                         }
                         
-                        // 额外战术考量：如果AI有强势进攻但玩家有致命威胁，优先防守
-                        if (playerMaxThreat >= SCORES.OPEN_FOUR && aiMaxThreat < SCORES.FIVE) {
-                            score -= playerMaxThreat * 2; // 优先防守
+                        // 额外战术考量：如果玩家有威胁，提高防守优先级
+                        // 修改：降低威胁等级门槛，提高防守系数
+                        if (playerMaxThreat >= SCORES.OPEN_THREE && aiMaxThreat < SCORES.FIVE) {
+                            score -= playerMaxThreat * 3; // 更强的防守优先级
                         }
                         
                         // 鼓励进攻性下法，特别是在有优势时
@@ -1444,8 +1446,8 @@
                     };
                 }).sort((a, b) => b.score - a.score);
                 
-                // 返回前20个最佳候选位置(增加数量提高AI能考虑到的防守点)
-                return sortedCandidates.slice(0, 20).map(item => item.pos);
+                        // 返回前30个最佳候选位置(增加数量提高AI能考虑到的防守点)
+                        return sortedCandidates.slice(0, 30).map(item => item.pos);
             }
 
             // 优化后的Minimax算法
