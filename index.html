@@ -117,6 +117,29 @@
             background-color: #A0522D;
         }
 
+        /* 禁用按钮样式 */
+        button:disabled {
+            background-color: #cccccc;
+            color: #888888;
+            cursor: not-allowed;
+        }
+
+        /* 悔棋按钮锁图标样式 */
+        #undo.locked {
+            background-image: url('https://img.icons8.com/ios/50/lock--v1.png');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 20px;
+            color: transparent;
+        }
+
+        /* 移动端适配锁图标 */
+        @media screen and (max-width: 768px) {
+            #undo.locked {
+                background-size: 16px;
+            }
+        }
+
         .status-container {
             margin-top: 15px;
             text-align: center;
@@ -313,10 +336,11 @@
                 <option value="easy">简单</option>
                 <option value="medium" selected>普通</option>
                 <option value="hard">困难</option>
-                <option value="insane">疯狂</option>
-            </select>
-        </div>
+            <option value="insane">疯狂</option>
+        </select>
+        <button id="undo">悔棋</button> <!-- 添加悔棋按钮 -->
     </div>
+</div>
     <!-- 背景音乐控制按钮 -->
     <div class="bgm-container">
         <button id="bgm-toggle" class="bgm-button">背景音乐: 开启</button>
@@ -361,6 +385,8 @@
             let difficulty = 'medium';
             let backgroundMusicStarted = false;
             let isAITurn = false; // 新增：AI 回合标志
+            let moveHistory = []; // 新增：存储落子历史
+            let canUndo = true; // 新增：控制是否可以悔棋
 
             // DOM元素引用
             const boardElement = document.getElementById('board');
@@ -369,6 +395,7 @@
             const aiToggleButton = document.getElementById('ai-toggle');
             const difficultySelect = document.getElementById('difficulty');
             const thinkingIndicator = document.getElementById('thinking-indicator');
+            const undoButton = document.getElementById('undo'); // 新增：悔棋按钮引用
 
             // 音效元素
             const clickSound = document.getElementById('click-sound');
@@ -539,11 +566,12 @@
 
                 // 如果是AI回合且AI开启
                 if (aiEnabled && currentPlayer === WHITE && !gameOver) {
-                    // 设置 AI 回合标志为 true
-                    isAITurn = true;
+                // 设置 AI 回合标志为 true
+                isAITurn = true;
+                updateUndoButtonState(true); // 禁用悔棋按钮
 
-                    // 显示思考指示器
-                    thinkingIndicator.style.display = 'inline-block';
+                // 显示思考指示器
+                thinkingIndicator.style.display = 'inline-block';
 
                     // 根据难度设置延迟时间(优化后的时间范围)
                     let delay;
@@ -605,6 +633,7 @@
                         } finally {
                             // 无论如何，确保AI回合标志被重置
                             isAITurn = false;
+                            updateUndoButtonState(false); // 启用悔棋按钮
                         }
                     }, delay);
                 }
@@ -613,8 +642,28 @@
             // 下棋
             function makeMove(row, col, player) {
                 board[row][col] = player;
+                moveHistory.push({ row, col, player }); // 记录历史
                 renderPiece(row, col, player);
                 lastMove = [row, col];
+                canUndo = true; // 落子后允许悔棋
+                // 游戏开始后启用悔棋按钮
+                if (moveHistory.length > 0) {
+                    updateUndoButtonState(false);
+                }
+            }
+
+            // 移除棋子（用于悔棋）
+            function removePiece(row, col) {
+                const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                const piece = cell.querySelector('.piece');
+                if (piece) {
+                    cell.removeChild(piece);
+                }
+                // 移除可能存在的 last-move 标记
+                const lastMovePiece = document.querySelector('.last-move');
+                if (lastMovePiece && lastMovePiece.parentElement === cell) {
+                    lastMovePiece.classList.remove('last-move');
+                }
             }
 
             // 渲染棋子
@@ -1918,7 +1967,64 @@
                 statusElement.textContent = '黑方回合';
                 initializeBoard();
                 isAITurn = false; // 重置 AI 回合标志
+                moveHistory = []; // 清空历史记录
+                undoButton.disabled = true; // 禁用悔棋按钮
             }
+
+            // 悔棋功能
+            function undoMove() {
+                if (gameOver || isAITurn || !canUndo) { // 增加对 canUndo 的检查
+                    if (!canUndo) {
+                        console.log("请先进行一回合再悔棋"); // 或者显示提示信息给用户
+                    }
+                    return;
+                }
+
+                const stepsToUndo = aiEnabled ? 2 : 1;
+
+                if (moveHistory.length < stepsToUndo) {
+                    console.log("没有足够的步数可以悔棋");
+                    return;
+                }
+
+                for (let i = 0; i < stepsToUndo; i++) {
+                    const lastStep = moveHistory.pop();
+                    if (lastStep) {
+                        board[lastStep.row][lastStep.col] = EMPTY;
+                        removePiece(lastStep.row, lastStep.col);
+                    }
+                }
+
+                // 恢复上上一步的lastMove标记
+                if (moveHistory.length > 0) {
+                    const previousMove = moveHistory[moveHistory.length - 1];
+                    const cell = document.querySelector(`.cell[data-row="${previousMove.row}"][data-col="${previousMove.col}"]`);
+                    const piece = cell.querySelector('.piece');
+                    if (piece) {
+                        piece.classList.add('last-move');
+                    }
+                    lastMove = [previousMove.row, previousMove.col];
+                } else {
+                    lastMove = null;
+                    // 如果历史记录为空，禁用悔棋按钮
+                    updateUndoButtonState(true);
+                }
+
+                // 切换回上一个玩家
+                currentPlayer = moveHistory.length > 0 ? (moveHistory[moveHistory.length - 1].player === BLACK ? WHITE : BLACK) : BLACK;
+
+                // 如果是AI模式，悔棋后总是轮到黑方（玩家）
+                if (aiEnabled) {
+                    currentPlayer = BLACK;
+                }
+
+                statusElement.textContent = currentPlayer === BLACK ? '黑方回合' : '白方回合';
+                gameOver = false; // 悔棋后游戏继续
+                thinkingIndicator.style.display = 'none'; // 隐藏思考指示器
+                canUndo = false; // 悔棋后禁止连续悔棋
+                updateUndoButtonState(true); // 悔棋后立即禁用按钮并显示锁图标
+            }
+
 
             // 切换AI
             function toggleAI() {
@@ -1997,8 +2103,13 @@
                         } finally {
                             // 无论如何，确保AI回合标志被重置
                             isAITurn = false;
+                            updateUndoButtonState(false); // 启用悔棋按钮
                         }
                     }, delay);
+                }
+                // 如果关闭AI，且当前是白方回合，确保悔棋按钮可用
+                if (!aiEnabled && currentPlayer === WHITE) {
+                    updateUndoButtonState(moveHistory.length === 0);
                 }
             }
 
@@ -2037,15 +2148,30 @@
                 statusElement.textContent = '黑方回合';
                 initializeBoard();
                 isAITurn = false; // 重置 AI 回合标志
+                canUndo = true; // 重置悔棋状态
+                moveHistory = []; // 清空历史记录
+                updateUndoButtonState(true); // 禁用悔棋按钮
             }
 
             // 事件监听
             restartButton.addEventListener('click', restartGame);
             aiToggleButton.addEventListener('click', toggleAI);
             difficultySelect.addEventListener('change', changeDifficulty);
+            undoButton.addEventListener('click', undoMove); // 添加悔棋按钮监听
+
+            // 更新悔棋按钮状态的函数
+            function updateUndoButtonState(disabled) {
+                undoButton.disabled = disabled;
+                if (disabled) {
+                    undoButton.classList.add('locked');
+                } else {
+                    undoButton.classList.remove('locked');
+                }
+            }
 
             // 初始化游戏
             initializeBoard();
+            updateUndoButtonState(true); // 初始禁用悔棋按钮
         });
     </script>
 </body>
