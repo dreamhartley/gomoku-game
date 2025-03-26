@@ -366,14 +366,14 @@
                         OPEN_THREE: 6000,     // 进一步提高活三评分
                         TWO: 100,
                         ONE: 10,
-                        BLOCKED_FOUR: 2000,   // 进一步提高阻塞四的权重
-                        BLOCKED_THREE: 500,   // 大幅提高阻塞三的权重以加强防守
-                        BLOCKED_TWO: 20,      // 增加阻塞二的权重
+                        BLOCKED_FOUR: 2500,   // 提高阻塞四的权重以加强防守
+                        BLOCKED_THREE: 800,   // 大幅提高阻塞三的权重以加强防守
+                        BLOCKED_TWO: 50,      // 增加阻塞二的权重
                         DOUBLE_THREE: 18000,  // 极大提高双三组合威胁值
                         TRIPLE_THREE: 50000,  // 新增：三活三组合，几乎必胜形态
                         FOUR_THREE: 40000,    // 进一步提高四三组合威胁
                         DOUBLE_TWO: 1200,     // 提高双活二评分
-                        MULTI_DIRECTION: 5000 // 新增：多方向威胁加成
+                        MULTI_DIRECTION: 8000 // 提高多方向威胁加成，特别是对角线方向
                     };
 
             // 游戏状态变量
@@ -789,14 +789,14 @@
                         OPEN_THREE: 6000,     // 进一步提高活三评分
                         TWO: 100,
                         ONE: 10,
-                        BLOCKED_FOUR: 2000,   // 进一步提高阻塞四的权重
-                        BLOCKED_THREE: 500,   // 大幅提高阻塞三的权重以加强防守
-                        BLOCKED_TWO: 20,      // 增加阻塞二的权重
+                        BLOCKED_FOUR: 2500,   // 提高阻塞四的权重以加强防守
+                        BLOCKED_THREE: 800,   // 大幅提高阻塞三的权重以加强防守
+                        BLOCKED_TWO: 50,      // 增加阻塞二的权重
                         DOUBLE_THREE: 18000,  // 极大提高双三组合威胁值
                         TRIPLE_THREE: 50000,  // 新增：三活三组合，几乎必胜形态
                         FOUR_THREE: 40000,    // 进一步提高四三组合威胁
                         DOUBLE_TWO: 1200,     // 提高双活二评分
-                        MULTI_DIRECTION: 5000 // 新增：多方向威胁加成
+                        MULTI_DIRECTION: 8000 // 提高多方向威胁加成，特别是对角线方向
                     };
 
                     // 疯狂难度 - 优化后的AI算法
@@ -1456,7 +1456,89 @@
                         // 额外战术考量：如果玩家有威胁，提高防守优先级
                         // 修改：降低威胁等级门槛，提高防守系数
                         if (playerMaxThreat >= SCORES.OPEN_THREE && aiMaxThreat < SCORES.FIVE) {
-                            score -= playerMaxThreat * 3; // 更强的防守优先级
+                            score -= playerMaxThreat * 4; // 更强的防守优先级
+                        }
+                        
+                        // 特别关注对角线威胁
+                        const diagonalThreat = checkDiagonalThreats(board, BLACK);
+                        if (diagonalThreat > 0) {
+                            score -= diagonalThreat * 2.5; // 额外的对角线防守权重
+                        }
+
+                        // 检测对角线威胁的函数
+                        function checkDiagonalThreats(board, player) {
+                            let maxThreat = 0;
+                            const diagonalDirections = [
+                                [1, 1],   // 对角线
+                                [1, -1]   // 反对角线
+                            ];
+                            
+                            // 遍历棋盘寻找对角线威胁
+                            for (let row = 0; row < BOARD_SIZE; row++) {
+                                for (let col = 0; col < BOARD_SIZE; col++) {
+                                    if (board[row][col] === player) {
+                                        // 检查每个对角线方向
+                                        for (const [dx, dy] of diagonalDirections) {
+                                            let threatScore = evaluateDiagonalThreat(board, row, col, dx, dy, player);
+                                            maxThreat = Math.max(maxThreat, threatScore);
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            return maxThreat;
+                        }
+                        
+                        // 评估特定方向的对角线威胁
+                        function evaluateDiagonalThreat(board, row, col, dx, dy, player) {
+                            // 计算连续棋子数
+                            let count = 1;
+                            let openEnds = 0;
+                            
+                            // 正向检查
+                            for (let i = 1; i < 5; i++) {
+                                const r = row + i * dx;
+                                const c = col + i * dy;
+                                
+                                if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) break;
+                                
+                                if (board[r][c] === player) {
+                                    count++;
+                                } else if (board[r][c] === EMPTY) {
+                                    openEnds++;
+                                    break;
+                                } else {
+                                    break;
+                                }
+                            }
+                            
+                            // 反向检查
+                            for (let i = 1; i < 5; i++) {
+                                const r = row - i * dx;
+                                const c = col - i * dy;
+                                
+                                if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) break;
+                                
+                                if (board[r][c] === player) {
+                                    count++;
+                                } else if (board[r][c] === EMPTY) {
+                                    openEnds++;
+                                    break;
+                                } else {
+                                    break;
+                                }
+                            }
+                            
+                            // 根据连续棋子数和开放端数评估威胁
+                            if (count >= 4) {
+                                return openEnds > 0 ? SCORES.BLOCKED_FOUR * 1.5 : SCORES.BLOCKED_FOUR;
+                            } else if (count == 3) {
+                                return openEnds == 2 ? SCORES.OPEN_THREE * 1.2 : (openEnds == 1 ? SCORES.BLOCKED_THREE * 1.2 : 0);
+                            } else if (count == 2) {
+                                return openEnds == 2 ? SCORES.TWO * 1.2 : (openEnds == 1 ? SCORES.BLOCKED_TWO * 1.2 : 0);
+                            }
+                            
+                            return 0;
                         }
                         
                         // 鼓励进攻性下法，特别是在有优势时
@@ -1955,19 +2037,127 @@
             // 评估整个棋盘
             function evaluateBoard() {
                 let score = 0;
+                let playerMaxThreat = 0;
+                let aiMaxThreat = 0;
 
                 // 评估白棋（AI）的优势
                 for (let row = 0; row < BOARD_SIZE; row++) {
                     for (let col = 0; col < BOARD_SIZE; col++) {
                         if (board[row][col] === WHITE) {
-                            score += evaluatePosition(row, col, WHITE);
+                            const pieceScore = evaluatePosition(row, col, WHITE);
+                            score += pieceScore;
+                            aiMaxThreat = Math.max(aiMaxThreat, pieceScore);
                         } else if (board[row][col] === BLACK) {
-                            score -= evaluatePosition(row, col, BLACK) * 1.5; // 进一步提高防守权重，更注重阻止玩家形成威胁
+                            const pieceScore = evaluatePosition(row, col, BLACK);
+                            playerMaxThreat = Math.max(playerMaxThreat, pieceScore);
+                            
+                            // 使用动态权重，对危险棋型增加更高防守权重
+                            let defensiveFactor = 2.5; // 提高基础防守权重
+                            
+                            // 根据威胁级别调整防守权重
+                            if (pieceScore >= SCORES.OPEN_THREE) defensiveFactor = 3.2;
+                            if (pieceScore >= SCORES.BLOCKED_FOUR) defensiveFactor = 3.8;
+                            if (pieceScore >= SCORES.OPEN_FOUR || pieceScore >= SCORES.DOUBLE_THREE) defensiveFactor = 4.5; 
+                            if (pieceScore >= SCORES.FOUR_THREE) defensiveFactor = 5.0;
+                            
+                            score -= pieceScore * defensiveFactor;
                         }
                     }
                 }
+                
+                // 额外战术考量：如果玩家有威胁，提高防守优先级
+                if (playerMaxThreat >= SCORES.OPEN_THREE && aiMaxThreat < SCORES.FIVE) {
+                    score -= playerMaxThreat * 4; // 更强的防守优先级
+                }
+                
+                // 特别关注对角线威胁
+                const diagonalThreat = checkDiagonalThreats(BLACK);
+                if (diagonalThreat > 0) {
+                    score -= diagonalThreat * 2.5; // 额外的对角线防守权重
+                }
+                
+                // 鼓励进攻性下法，特别是在有优势时
+                if (aiMaxThreat > playerMaxThreat && aiMaxThreat >= SCORES.OPEN_THREE) {
+                    score += aiMaxThreat * 0.5; // 进攻加成
+                }
 
                 return score;
+            }
+
+            // 检测对角线威胁的函数
+            function checkDiagonalThreats(player) {
+                let maxThreat = 0;
+                const diagonalDirections = [
+                    [1, 1],   // 对角线
+                    [1, -1]   // 反对角线
+                ];
+                
+                // 遍历棋盘寻找对角线威胁
+                for (let row = 0; row < BOARD_SIZE; row++) {
+                    for (let col = 0; col < BOARD_SIZE; col++) {
+                        if (board[row][col] === player) {
+                            // 检查每个对角线方向
+                            for (const [dx, dy] of diagonalDirections) {
+                                let threatScore = evaluateDiagonalThreat(row, col, dx, dy, player);
+                                maxThreat = Math.max(maxThreat, threatScore);
+                            }
+                        }
+                    }
+                }
+                
+                return maxThreat;
+            }
+            
+            // 评估特定方向的对角线威胁
+            function evaluateDiagonalThreat(row, col, dx, dy, player) {
+                // 计算连续棋子数
+                let count = 1;
+                let openEnds = 0;
+                
+                // 正向检查
+                for (let i = 1; i < 5; i++) {
+                    const r = row + i * dx;
+                    const c = col + i * dy;
+                    
+                    if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) break;
+                    
+                    if (board[r][c] === player) {
+                        count++;
+                    } else if (board[r][c] === EMPTY) {
+                        openEnds++;
+                        break;
+                    } else {
+                        break;
+                    }
+                }
+                
+                // 反向检查
+                for (let i = 1; i < 5; i++) {
+                    const r = row - i * dx;
+                    const c = col - i * dy;
+                    
+                    if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) break;
+                    
+                    if (board[r][c] === player) {
+                        count++;
+                    } else if (board[r][c] === EMPTY) {
+                        openEnds++;
+                        break;
+                    } else {
+                        break;
+                    }
+                }
+                
+                // 根据连续棋子数和开放端数评估威胁
+                if (count >= 4) {
+                    return openEnds > 0 ? SCORES.BLOCKED_FOUR * 1.5 : SCORES.BLOCKED_FOUR;
+                } else if (count == 3) {
+                    return openEnds == 2 ? SCORES.OPEN_THREE * 1.2 : (openEnds == 1 ? SCORES.BLOCKED_THREE * 1.2 : 0);
+                } else if (count == 2) {
+                    return openEnds == 2 ? SCORES.TWO * 1.2 : (openEnds == 1 ? SCORES.BLOCKED_TWO * 1.2 : 0);
+                }
+                
+                return 0;
             }
 
             // 重新开始游戏
