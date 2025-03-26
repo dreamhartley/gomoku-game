@@ -1344,16 +1344,22 @@
                                 { regex: /10111|11011|11101/, score: SCORES.BLOCKED_FOUR, type: 'BLOCKED_FOUR' }, // 跳四
                                 { regex: /011101|101110/, score: SCORES.BLOCKED_FOUR, type: 'BLOCKED_FOUR' }, // 新增：另一种特殊冲四形态
                                 
-                                // 活三和各种变形
-                                { regex: /01110/, score: SCORES.OPEN_THREE, type: 'OPEN_THREE' }, // 标准活三
-                                { regex: /011010|010110/, score: SCORES.OPEN_THREE * 0.9, type: 'OPEN_THREE' }, // 次级活三形态
-                                { regex: /0110100/, score: SCORES.OPEN_THREE * 0.8, type: 'OPEN_THREE' }, // 新增：间隔活三变种
-                                
-                                // 眠三变种
-                                { regex: /211100|001112/, score: SCORES.BLOCKED_THREE, type: 'BLOCKED_THREE' }, // 眠三(一侧被堵)
-                                { regex: /10011|11001/, score: SCORES.BLOCKED_THREE, type: 'BLOCKED_THREE' }, // 眠三(跳型)
-                                { regex: /21110|01112/, score: SCORES.BLOCKED_THREE * 0.9, type: 'BLOCKED_THREE' }, // 新增：边缘眠三
-                                { regex: /10101/, score: SCORES.BLOCKED_THREE * 0.8, type: 'BLOCKED_THREE' }, // 新增：间隔眠三
+                        // 活三和各种变形
+                        { regex: /01110/, score: SCORES.OPEN_THREE, type: 'OPEN_THREE' }, // 标准活三
+                        { regex: /011010|010110/, score: SCORES.OPEN_THREE * 0.9, type: 'OPEN_THREE' }, // 次级活三形态
+                        { regex: /0110100/, score: SCORES.OPEN_THREE * 0.8, type: 'OPEN_THREE' }, // 新增：间隔活三变种
+                        
+                        // 跳三变种 - 增强对跳三的识别
+                        { regex: /010110|011010/, score: SCORES.OPEN_THREE * 0.95, type: 'OPEN_THREE' }, // 跳三形态1: ● _ ● ●
+                        { regex: /01101|10110/, score: SCORES.OPEN_THREE * 0.9, type: 'OPEN_THREE' }, // 跳三形态2: ● ● _ ●
+                        { regex: /0101010/, score: SCORES.OPEN_THREE * 0.85, type: 'OPEN_THREE' }, // 特殊跳三: ● _ ● _ ●
+                        
+                        // 眠三变种
+                        { regex: /211100|001112/, score: SCORES.BLOCKED_THREE, type: 'BLOCKED_THREE' }, // 眠三(一侧被堵)
+                        { regex: /10011|11001/, score: SCORES.BLOCKED_THREE, type: 'BLOCKED_THREE' }, // 眠三(跳型)
+                        { regex: /21110|01112/, score: SCORES.BLOCKED_THREE * 0.9, type: 'BLOCKED_THREE' }, // 新增：边缘眠三
+                        { regex: /10101/, score: SCORES.BLOCKED_THREE * 0.8, type: 'BLOCKED_THREE' }, // 新增：间隔眠三
+                        { regex: /210110|011012/, score: SCORES.BLOCKED_THREE * 0.85, type: 'BLOCKED_THREE' }, // 新增：跳三被堵
                                 
                                 // 活二变种
                                 { regex: /00110|01100/, score: SCORES.TWO, type: 'TWO' }, // 活二
@@ -1820,16 +1826,22 @@
                         { regex: /10111|11011|11101/, score: SCORES.BLOCKED_FOUR, type: 'BLOCKED_FOUR' }, // 跳四
                         { regex: /011101|101110/, score: SCORES.BLOCKED_FOUR, type: 'BLOCKED_FOUR' }, // 新增：另一种特殊冲四形态
                         
-                        // 活三和各种变形
-                        { regex: /01110/, score: SCORES.OPEN_THREE, type: 'OPEN_THREE' }, // 标准活三
-                        { regex: /011010|010110/, score: SCORES.OPEN_THREE * 0.9, type: 'OPEN_THREE' }, // 次级活三形态
-                        { regex: /0110100/, score: SCORES.OPEN_THREE * 0.8, type: 'OPEN_THREE' }, // 新增：间隔活三变种
-                        
-                        // 眠三变种
-                        { regex: /211100|001112/, score: SCORES.BLOCKED_THREE, type: 'BLOCKED_THREE' }, // 眠三(一侧被堵)
-                        { regex: /10011|11001/, score: SCORES.BLOCKED_THREE, type: 'BLOCKED_THREE' }, // 眠三(跳型)
-                        { regex: /21110|01112/, score: SCORES.BLOCKED_THREE * 0.9, type: 'BLOCKED_THREE' }, // 新增：边缘眠三
-                        { regex: /10101/, score: SCORES.BLOCKED_THREE * 0.8, type: 'BLOCKED_THREE' }, // 新增：间隔眠三
+                                // 活三和各种变形
+                                { regex: /01110/, score: SCORES.OPEN_THREE, type: 'OPEN_THREE' }, // 标准活三
+                                { regex: /011010|010110/, score: SCORES.OPEN_THREE * 0.9, type: 'OPEN_THREE' }, // 次级活三形态
+                                { regex: /0110100/, score: SCORES.OPEN_THREE * 0.8, type: 'OPEN_THREE' }, // 新增：间隔活三变种
+                                
+                                // 跳三变种 - 增强对跳三的识别
+                                { regex: /010110|011010/, score: SCORES.OPEN_THREE * 0.95, type: 'OPEN_THREE' }, // 跳三形态1: ● _ ● ●
+                                { regex: /01101|10110/, score: SCORES.OPEN_THREE * 0.9, type: 'OPEN_THREE' }, // 跳三形态2: ● ● _ ●
+                                { regex: /0101010/, score: SCORES.OPEN_THREE * 0.85, type: 'OPEN_THREE' }, // 特殊跳三: ● _ ● _ ●
+                                
+                                // 眠三变种
+                                { regex: /211100|001112/, score: SCORES.BLOCKED_THREE, type: 'BLOCKED_THREE' }, // 眠三(一侧被堵)
+                                { regex: /10011|11001/, score: SCORES.BLOCKED_THREE, type: 'BLOCKED_THREE' }, // 眠三(跳型)
+                                { regex: /21110|01112/, score: SCORES.BLOCKED_THREE * 0.9, type: 'BLOCKED_THREE' }, // 新增：边缘眠三
+                                { regex: /10101/, score: SCORES.BLOCKED_THREE * 0.8, type: 'BLOCKED_THREE' }, // 新增：间隔眠三
+                                { regex: /210110|011012/, score: SCORES.BLOCKED_THREE * 0.85, type: 'BLOCKED_THREE' }, // 新增：跳三被堵
                         
                         // 活二变种
                         { regex: /00110|01100/, score: SCORES.TWO, type: 'TWO' }, // 活二
