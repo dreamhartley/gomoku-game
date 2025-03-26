@@ -333,21 +333,24 @@
             const BLACK = 1;
             const WHITE = 2;
 
-            // 棋型评分
-            const SCORES = {
-                FIVE: 100000,
-                FOUR: 10000,
-                OPEN_FOUR: 15000,  // 新增：活四，比冲四更有威胁
-                THREE: 1000,
-                OPEN_THREE: 3000,  // 新增：活三，比眠三更有威胁
-                TWO: 100,
-                ONE: 10,
-                BLOCKED_FOUR: 1000,
-                BLOCKED_THREE: 100,
-                BLOCKED_TWO: 10,
-                DOUBLE_THREE: 5000,  // 新增：双三组合
-                FOUR_THREE: 20000    // 新增：四三组合，极强威胁
-            };
+                    // 棋型评分
+                    const SCORES = {
+                        FIVE: 100000,
+                        FOUR: 10000,
+                        OPEN_FOUR: 15000,     // 活四
+                        THREE: 1000,
+                        OPEN_THREE: 6000,     // 进一步提高活三评分
+                        TWO: 100,
+                        ONE: 10,
+                        BLOCKED_FOUR: 2000,   // 进一步提高阻塞四的权重
+                        BLOCKED_THREE: 500,   // 大幅提高阻塞三的权重以加强防守
+                        BLOCKED_TWO: 20,      // 增加阻塞二的权重
+                        DOUBLE_THREE: 18000,  // 极大提高双三组合威胁值
+                        TRIPLE_THREE: 50000,  // 新增：三活三组合，几乎必胜形态
+                        FOUR_THREE: 40000,    // 进一步提高四三组合威胁
+                        DOUBLE_TWO: 1200,     // 提高双活二评分
+                        MULTI_DIRECTION: 5000 // 新增：多方向威胁加成
+                    };
 
             // 游戏状态变量
             let board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(EMPTY));
@@ -732,16 +735,19 @@
                     const SCORES = {
                         FIVE: 100000,
                         FOUR: 10000,
-                        OPEN_FOUR: 15000,  // 新增：活四，比冲四更有威胁
+                        OPEN_FOUR: 15000,     // 活四
                         THREE: 1000,
-                        OPEN_THREE: 3000,  // 新增：活三，比眠三更有威胁
+                        OPEN_THREE: 6000,     // 进一步提高活三评分
                         TWO: 100,
                         ONE: 10,
-                        BLOCKED_FOUR: 1000,
-                        BLOCKED_THREE: 100,
-                        BLOCKED_TWO: 10,
-                        DOUBLE_THREE: 5000,  // 新增：双三组合
-                        FOUR_THREE: 20000    // 新增：四三组合，极强威胁
+                        BLOCKED_FOUR: 2000,   // 进一步提高阻塞四的权重
+                        BLOCKED_THREE: 500,   // 大幅提高阻塞三的权重以加强防守
+                        BLOCKED_TWO: 20,      // 增加阻塞二的权重
+                        DOUBLE_THREE: 18000,  // 极大提高双三组合威胁值
+                        TRIPLE_THREE: 50000,  // 新增：三活三组合，几乎必胜形态
+                        FOUR_THREE: 40000,    // 进一步提高四三组合威胁
+                        DOUBLE_TWO: 1200,     // 提高双活二评分
+                        MULTI_DIRECTION: 5000 // 新增：多方向威胁加成
                     };
 
                     // 疯狂难度 - 优化后的AI算法
@@ -1250,13 +1256,15 @@
                             [1, -1]   // 反对角线
                         ];
                         
-                        // 跟踪活三和活四的数量，用于识别复合棋型
+                        // 跟踪各种棋型的数量，用于识别复合棋型
                         let openThreeCount = 0;
                         let openFourCount = 0;
                         let fourCount = 0;
+                        let twoCount = 0;
+                        let blockedThreeCount = 0;
 
                         for (const [dx, dy] of directions) {
-                            // 检查五个位置
+                            // 扩大检查范围到9个位置，更好地识别连续棋型
                             let sequence = '';
 
                             for (let i = -4; i <= 4; i++) {
@@ -1274,43 +1282,74 @@
                                 }
                             }
 
-                            // 分析棋型，使用更全面的模式识别和类型标记
+                            // 增强棋型识别的模式和评分
                             const patterns = [
                                 { regex: /11111/, score: SCORES.FIVE, type: 'FIVE' }, // 五连
+                                
+                                // 活四和各种变形
                                 { regex: /011110/, score: SCORES.OPEN_FOUR, type: 'OPEN_FOUR' }, // 活四
+                                
+                                // 各种冲四形态
                                 { regex: /011112|211110/, score: SCORES.BLOCKED_FOUR, type: 'BLOCKED_FOUR' }, // 冲四（单边封堵）
                                 { regex: /0111010|0101110/, score: SCORES.BLOCKED_FOUR, type: 'BLOCKED_FOUR' }, // 特殊冲四形态
                                 { regex: /10111|11011|11101/, score: SCORES.BLOCKED_FOUR, type: 'BLOCKED_FOUR' }, // 跳四
-                                { regex: /01110/, score: SCORES.OPEN_THREE, type: 'OPEN_THREE' }, // 活三
-                                { regex: /011010|010110/, score: SCORES.OPEN_THREE, type: 'OPEN_THREE' }, // 特殊活三形态
-                                { regex: /001112|211100|10011|11001/, score: SCORES.BLOCKED_THREE, type: 'BLOCKED_THREE' }, // 眠三
+                                { regex: /011101|101110/, score: SCORES.BLOCKED_FOUR, type: 'BLOCKED_FOUR' }, // 新增：另一种特殊冲四形态
+                                
+                                // 活三和各种变形
+                                { regex: /01110/, score: SCORES.OPEN_THREE, type: 'OPEN_THREE' }, // 标准活三
+                                { regex: /011010|010110/, score: SCORES.OPEN_THREE * 0.9, type: 'OPEN_THREE' }, // 次级活三形态
+                                { regex: /0110100/, score: SCORES.OPEN_THREE * 0.8, type: 'OPEN_THREE' }, // 新增：间隔活三变种
+                                
+                                // 眠三变种
+                                { regex: /211100|001112/, score: SCORES.BLOCKED_THREE, type: 'BLOCKED_THREE' }, // 眠三(一侧被堵)
+                                { regex: /10011|11001/, score: SCORES.BLOCKED_THREE, type: 'BLOCKED_THREE' }, // 眠三(跳型)
+                                { regex: /21110|01112/, score: SCORES.BLOCKED_THREE * 0.9, type: 'BLOCKED_THREE' }, // 新增：边缘眠三
+                                { regex: /10101/, score: SCORES.BLOCKED_THREE * 0.8, type: 'BLOCKED_THREE' }, // 新增：间隔眠三
+                                
+                                // 活二变种
                                 { regex: /00110|01100/, score: SCORES.TWO, type: 'TWO' }, // 活二
                                 { regex: /01010/, score: SCORES.TWO, type: 'TWO' }, // 跳活二
-                                { regex: /000112|211000|001012|210100|010010|10001/, score: SCORES.BLOCKED_TWO, type: 'BLOCKED_TWO' }, // 眠二
-                                { regex: /00010|00100/, score: SCORES.ONE, type: 'ONE' } // 活一
+                                { regex: /010010/, score: SCORES.TWO * 0.8, type: 'TWO' }, // 间隔活二
+                                
+                                // 眠二变种
+                                { regex: /211000|000112/, score: SCORES.BLOCKED_TWO, type: 'BLOCKED_TWO' }, // 眠二(一侧被堵)
+                                { regex: /210100|001012/, score: SCORES.BLOCKED_TWO, type: 'BLOCKED_TWO' }, // 眠二(跳型)
+                                { regex: /21010|01012/, score: SCORES.BLOCKED_TWO * 0.8, type: 'BLOCKED_TWO' }, // 边缘眠二
+                                
+                                // 活一
+                                { regex: /00010|01000/, score: SCORES.ONE, type: 'ONE' } // 活一
                             ];
 
                             for (const pattern of patterns) {
                                 if (pattern.regex.test(sequence)) {
                                     score += pattern.score;
                                     
-                                    // 跟踪特定棋型数量
+                                    // 跟踪各类型棋型的数量
                                     if (pattern.type === 'OPEN_THREE') openThreeCount++;
+                                    if (pattern.type === 'BLOCKED_THREE') blockedThreeCount++;
                                     if (pattern.type === 'OPEN_FOUR') openFourCount++;
                                     if (pattern.type === 'BLOCKED_FOUR' || pattern.type === 'OPEN_FOUR') fourCount++;
+                                    if (pattern.type === 'TWO') twoCount++;
                                     
                                     break;
                                 }
                             }
                         }
                         
-                        // 计算复合棋型额外分数
+                        // 复合棋型的额外评分（大幅增强）
                         if (openThreeCount >= 2) {
                             score += SCORES.DOUBLE_THREE; // 双活三，强力攻击形态
+                        } else if (openThreeCount >= 1 && blockedThreeCount >= 1) {
+                            // 新增：活三+眠三组合
+                            score += SCORES.DOUBLE_THREE * 0.7;
                         }
                         
                         if (openThreeCount >= 1 && fourCount >= 1) {
                             score += SCORES.FOUR_THREE; // 四三组合，几乎必胜形态
+                        }
+                        
+                        if (twoCount >= 2) {
+                            score += SCORES.DOUBLE_TWO; // 双活二组合
                         }
                         
                         // 根据棋子的数量动态调整分数
@@ -1319,6 +1358,11 @@
                         // 在残局阶段，更重视进攻
                         if (totalPieces > 30) {
                             score *= 1.2;
+                        } else if (totalPieces < 10) {
+                            // 在开局阶段，更注重布局和防守
+                            const center = (BOARD_SIZE - 1) / 2;
+                            const distanceToCenter = Math.abs(row - center) + Math.abs(col - center);
+                            score += (14 - distanceToCenter) * 3; // 中心加分
                         }
 
                         return score;
@@ -1683,10 +1727,21 @@
                     [1, 1],   // 对角线
                     [1, -1]   // 反对角线
                 ];
+                
+                // 跟踪各种棋型的数量，用于识别复合棋型
+                let openThreeCount = 0;
+                let openFourCount = 0;
+                let fourCount = 0;
+                let twoCount = 0;
+                let blockedThreeCount = 0;
+                
+                // 记录每个方向的威胁
+                const directionThreats = [];
 
                 for (const [dx, dy] of directions) {
-                    // 检查五个位置
+                    // 扩大检查范围到9个位置，更好地识别连续棋型
                     let sequence = '';
+                    let dirScore = 0;
 
                     for (let i = -4; i <= 4; i++) {
                         const r = row + i * dx;
@@ -1703,24 +1758,134 @@
                         }
                     }
 
-                    // 分析棋型
+                    // 增强棋型识别的模式和评分
                     const patterns = [
-                        { regex: /11111/, score: SCORES.FIVE }, // 五连
-                        { regex: /011110/, score: SCORES.FOUR }, // 活四
-                        { regex: /011112|211110|10111|11011|11101|011011/, score: SCORES.BLOCKED_FOUR }, // 冲四
-                        { regex: /01110/, score: SCORES.THREE }, // 活三
-                        { regex: /001112|211100|010110|011010|10011|11001|10101/, score: SCORES.BLOCKED_THREE }, // 眠三
-                        { regex: /00110|01100|01010/, score: SCORES.TWO }, // 活二
-                        { regex: /000112|211000|001012|210100|010010|10001/, score: SCORES.BLOCKED_TWO }, // 眠二
-                        { regex: /00010|00100/, score: SCORES.ONE } // 活一
+                        { regex: /11111/, score: SCORES.FIVE, type: 'FIVE' }, // 五连
+                        
+                        // 活四和各种变形
+                        { regex: /011110/, score: SCORES.OPEN_FOUR, type: 'OPEN_FOUR' }, // 活四
+                        
+                        // 各种冲四形态
+                        { regex: /011112|211110/, score: SCORES.BLOCKED_FOUR, type: 'BLOCKED_FOUR' }, // 冲四（单边封堵）
+                        { regex: /0111010|0101110/, score: SCORES.BLOCKED_FOUR, type: 'BLOCKED_FOUR' }, // 特殊冲四形态
+                        { regex: /10111|11011|11101/, score: SCORES.BLOCKED_FOUR, type: 'BLOCKED_FOUR' }, // 跳四
+                        { regex: /011101|101110/, score: SCORES.BLOCKED_FOUR, type: 'BLOCKED_FOUR' }, // 新增：另一种特殊冲四形态
+                        
+                        // 活三和各种变形
+                        { regex: /01110/, score: SCORES.OPEN_THREE, type: 'OPEN_THREE' }, // 标准活三
+                        { regex: /011010|010110/, score: SCORES.OPEN_THREE * 0.9, type: 'OPEN_THREE' }, // 次级活三形态
+                        { regex: /0110100/, score: SCORES.OPEN_THREE * 0.8, type: 'OPEN_THREE' }, // 新增：间隔活三变种
+                        
+                        // 眠三变种
+                        { regex: /211100|001112/, score: SCORES.BLOCKED_THREE, type: 'BLOCKED_THREE' }, // 眠三(一侧被堵)
+                        { regex: /10011|11001/, score: SCORES.BLOCKED_THREE, type: 'BLOCKED_THREE' }, // 眠三(跳型)
+                        { regex: /21110|01112/, score: SCORES.BLOCKED_THREE * 0.9, type: 'BLOCKED_THREE' }, // 新增：边缘眠三
+                        { regex: /10101/, score: SCORES.BLOCKED_THREE * 0.8, type: 'BLOCKED_THREE' }, // 新增：间隔眠三
+                        
+                        // 活二变种
+                        { regex: /00110|01100/, score: SCORES.TWO, type: 'TWO' }, // 活二
+                        { regex: /01010/, score: SCORES.TWO, type: 'TWO' }, // 跳活二
+                        { regex: /010010/, score: SCORES.TWO * 0.8, type: 'TWO' }, // 间隔活二
+                        
+                        // 眠二变种
+                        { regex: /211000|000112/, score: SCORES.BLOCKED_TWO, type: 'BLOCKED_TWO' }, // 眠二(一侧被堵)
+                        { regex: /210100|001012/, score: SCORES.BLOCKED_TWO, type: 'BLOCKED_TWO' }, // 眠二(跳型)
+                        { regex: /21010|01012/, score: SCORES.BLOCKED_TWO * 0.8, type: 'BLOCKED_TWO' }, // 边缘眠二
+                        
+                        // 活一
+                        { regex: /00010|01000/, score: SCORES.ONE, type: 'ONE' } // 活一
                     ];
+
+                    // 设置存储当前方向的威胁类型
+                    let directionThreatType = null;
 
                     for (const pattern of patterns) {
                         if (pattern.regex.test(sequence)) {
-                            score += pattern.score;
+                            dirScore = pattern.score;
+                            
+                            // 跟踪各类型棋型的数量
+                            if (pattern.type === 'OPEN_THREE') {
+                                openThreeCount++;
+                                directionThreatType = 'OPEN_THREE';
+                            }
+                            if (pattern.type === 'BLOCKED_THREE') {
+                                blockedThreeCount++;
+                                directionThreatType = 'BLOCKED_THREE';
+                            }
+                            if (pattern.type === 'OPEN_FOUR') {
+                                openFourCount++;
+                                directionThreatType = 'OPEN_FOUR';
+                            }
+                            if (pattern.type === 'BLOCKED_FOUR' || pattern.type === 'OPEN_FOUR') {
+                                fourCount++;
+                                directionThreatType = 'FOUR';
+                            }
+                            if (pattern.type === 'TWO') {
+                                twoCount++;
+                                directionThreatType = 'TWO';
+                            }
+                            
+                            score += dirScore;
                             break;
                         }
                     }
+                    
+                    // 如果此方向有威胁，记录下来
+                    if (directionThreatType) {
+                        directionThreats.push({
+                            direction: [dx, dy],
+                            type: directionThreatType,
+                            score: dirScore
+                        });
+                    }
+                }
+                
+                // 计算多方向威胁加成
+                if (directionThreats.length >= 2) {
+                    // 多方向威胁加成
+                    const threatTypes = new Set(directionThreats.map(t => t.type));
+                    
+                    // 图中特殊情况：多个方向的活三或眠三，加大权重
+                    if (openThreeCount >= 2) {
+                        score += SCORES.DOUBLE_THREE;
+                        
+                        // 三个方向上的活三，几乎必胜
+                        if (openThreeCount >= 3) {
+                            score += SCORES.TRIPLE_THREE;
+                        }
+                    } 
+                    // 活三加眠三的组合
+                    else if (openThreeCount >= 1 && blockedThreeCount >= 1) {
+                        score += SCORES.DOUBLE_THREE * 0.7;
+                    }
+                    
+                    // 四三组合，几乎必胜
+                    if (openThreeCount >= 1 && fourCount >= 1) {
+                        score += SCORES.FOUR_THREE;
+                    }
+                    
+                    // 双活二组合
+                    if (twoCount >= 2) {
+                        score += SCORES.DOUBLE_TWO;
+                    }
+                    
+                    // 多方向威胁通用加成 (针对图中所示情况)
+                    if (threatTypes.size >= 2 && directionThreats.length >= 2) {
+                        score += SCORES.MULTI_DIRECTION;
+                    }
+                }
+                
+                // 根据棋子的数量动态调整分数
+                const totalPieces = board.flat().filter(cell => cell !== EMPTY).length;
+                
+                // 在残局阶段，更重视进攻
+                if (totalPieces > 30) {
+                    score *= 1.2;
+                } else if (totalPieces < 10) {
+                    // 在开局阶段，更注重布局和防守
+                    const center = (BOARD_SIZE - 1) / 2;
+                    const distanceToCenter = Math.abs(row - center) + Math.abs(col - center);
+                    score += (14 - distanceToCenter) * 3; // 中心加分
                 }
 
                 return score;
